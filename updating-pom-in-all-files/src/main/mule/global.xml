@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d73aaf4e-ed61-4d22-a565-dc629c3d8039" >
+		<http:listener-connection host="0.0.0.0" port="8082" readTimeout="30000000"/>
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="8ef2f8d1-1659-47d9-99ab-fb91c9845369" />
+	<http:request-config name="platform-api-invocation" doc:name="HTTP Request configuration" doc:id="4042fc60-0a78-449c-8ee3-2a0a2cd4f5b8" basePath="/exchange/api/v2/assets">
+		<http:request-connection protocol="HTTPS" host="anypoint.mulesoft.com" connectionIdleTimeout="300000000"/>
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="465eeeda-0c2e-4091-a1e1-3f03d959d7c5" file="properties\dev-config.yaml" />
+	<ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy" doc:id="557c3c81-dca4-439a-956f-a7c146fee873" objectStore="Object_store"/>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="38cd9a73-709d-47c6-894c-23c812f8383b" maxEntries="1" entryTtl="40" entryTtlUnit="MINUTES" expirationInterval="30" />
+</mule>

@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="update-all-connector-in-all-projects-flow" doc:id="4065137a-3af2-4732-a11d-8c9f85f879bd" >
+		<http:listener doc:name="Listener" doc:id="d222e48f-c761-4032-90a6-99d964dc9b76" config-ref="HTTP_Listener_config" path="/updateAll">
+			<http:response>
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+"Access-Control-Allow-Origin": "*",
+"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+"Access-Control-Allow-Headers": "Content-Type"
+}]]]></http:headers>
+			</http:response>
+		</http:listener>
+		<file:list doc:name="List" doc:id="5a8dff8a-ae9b-45f9-b2fe-f2c754ffca3d" config-ref="File_Config" directoryPath="E:\pom"/>
+		<ee:transform doc:name="Stores fileNames" doc:id="51dd279f-2ff3-45ff-8ae9-9780e5d2340e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.attributes.fileName]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="fileName"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="readData"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="connector-latest-version" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="6a70a64a-f2ca-4a66-b75b-4b2916a45315" collection='#[payload]'>
+			<ee:transform doc:name="setting path to read pom file" doc:id="872a0db5-7dd9-4be4-a777-cfc86795b330">
+			<ee:message>
+			</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="fileName"><![CDATA[%dw 2.0
+output application/json
+---
+vars.fileName + payload]]></ee:set-variable>
+					<ee:set-variable variableName="path"><![CDATA["E:/pom" ++ "/" ++ payload ++ "/pom.xml"]]></ee:set-variable>
+				</ee:variables>
+		</ee:transform>
+			<ee:transform doc:name="Transform Message" doc:id="99731862-116e-46d7-9429-9ff8e0bdefb4">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<file:read doc:name="Read POM File Content" doc:id="2fa6d296-70aa-4d8d-a736-cebacea5ee07" config-ref="File_Config" path="#[vars.path]" />
+			<ee:transform doc:name="Store POM file data" doc:id="c161eb0e-79eb-4ae1-a8c5-5c8d3a644358">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="readData"><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="connectors-versionFlow" doc:id="c2a124b4-7289-4892-8f5d-9af50f1a38eb" name="connectors-versionFlow" />
+			<ee:transform doc:name="Transform Message" doc:id="39bad0b9-ef68-4c4c-9265-576e5d38fd40">
+				<ee:message>
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+vars.readData]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="connector-latest-version" ><![CDATA[%dw 2.0
+output application/json
+---
+vars."connector-latest-version" + vars."latest-version"
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<ee:transform doc:name="Updating dependencies with new version" doc:id="5c863497-f949-4bc1-8c05-6ba748796331">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+var http = "1.10.3"
+var sockets = "1.2.5"
+var xml = "1.4.2"
+var validation = "2.0.6"
+var ftp = "1.5.2"
+var db = "1.14.6"
+var mysql = "8.0.30"
+var sf = "10.22.4"
+var wsc = "1.9.2"
+var snowflake = "3.13.29"
+var snf = "1.2.1"
+var file = "1.5.2"
+var secure = "1.2.7"
+var apikit = "1.9.2"
+var sfc = "2.18.0"
+var os = "1.2.2"
+var val = "2.0.6"
+var jackson = "2.13.0"
+var jersey = "2.35"
+var anypointmq = "4.0.8"
+var munit = "2.1.5"
+var httpclient = "4.4.1"
+var assert = "1.2.1"
+var fileext = "1.4.3"
+var sharepoint = "3.6.2"
+var slack = "1.0.19"
+var slackclient = "1.40.3"
+var slf4j = "1.6.1"
+var java = "1.2.13"
+---
+payload update {
+    case .project.dependencies -> $ mapObject ((value, key, index) ->
+    {
+        (key): value mapObject ((value, key, index) -> 
+        if((value) ~= "mule-http-connector") 
+        {
+            artifactId: value,
+            'version': http
+        }
+        else if((value) ~= "mule-sockets-connector")
+        {
+            artifactId: value,
+            'version': sockets
+        }
+        else if((value) ~= "mule-validation-module")
+        {
+            artifactId: value,
+            'version': validation
+        }
+        else if((value) ~= "mule-xml-module")
+        {
+            artifactId: value,
+            'version': xml
+        }
+        else if((value) ~= "mule-db-connector")
+        {
+            artifactId: value,
+            'version': db
+        }
+        else if((value) ~= "mule-ftp-connector")
+        {
+            artifactId: value,
+            'version': ftp
+        }
+        else if((value) ~= "mysql-connector-java")
+        {
+            artifactId: value,
+            'version': mysql
+        }
+        else if((value) ~= "mule-salesforce-connector")
+        {
+            artifactId: value,
+            'version': sf
+        }
+        else if((value) ~= "mule-file-connector")
+        {
+            artifactId: value,
+            'version': file
+        }
+        else if((value) ~= "mule-secure-configuration-property-module")
+        {
+            artifactId: value,
+            'version': secure
+        }
+        else if((value) ~= "mule-apikit-module")
+        {
+            artifactId: value,
+            'version': apikit
+        }
+        else if((value) ~= "mule-salesforce-composite-connector")
+        {
+            artifactId: value,
+            'version': sfc
+        }
+        else if((value) ~= "mule-objectstore-connector")
+        {
+            artifactId: value,
+            'version': os
+        }
+        else if((value) ~= "mule-validation-module")
+        {
+            artifactId: value,
+            'version': val
+        }
+        else if((value) ~= "jackson-databind")
+        {
+            artifactId: value,
+            'version': jackson
+        }
+        else if((value) ~= "jersey-media-json-jackson")
+        {
+            artifactId: value,
+            'version': jersey
+        }
+        else if((value) ~= "anypoint-mq-connector")
+        {
+            artifactId: value,
+            'version': anypointmq
+        }
+        else if((value) ~= "munit-runner")
+        {
+            artifactId: value,
+            'version': munit
+        }
+        else if((value) ~= "httpclient")
+        {
+            artifactId: value,
+            'version': httpclient
+        }
+        else if((value) ~= "munit-tools")
+        {
+            artifactId: value,
+            'version': munit
+        }
+        else if((value) ~= "assertions")
+        {
+            artifactId: value,
+            'version': assert
+        }
+        else if((value) ~= "mule-module-file-extension-common")
+        {
+            artifactId: value,
+            'version': fileext
+        }
+        else if((value) ~= "mule-sharepoint-connector")
+        {
+            artifactId: value,
+            'version': sharepoint
+        }
+        else if((value) ~= "mule4-slack-connector")
+        {
+            artifactId: value,
+            'version': slack
+        }
+        else if((value) ~= "slack-api-client")
+        {
+            artifactId: value,
+            'version': slackclient
+        }
+        else if((value) ~= "slf4j-api")
+        {
+            artifactId: value,
+            'version': slf4j
+        }
+        else if((value) ~= "slf4j-simple")
+        {
+            artifactId: value,
+            'version': slf4j
+        }
+        else if((value) ~= "mule-java-module")
+        {
+            artifactId: value,
+            'version': java
+        }
+        else if((value) ~= "mule-wsc-connector")
+        {
+            artifactId: value,
+            'version': wsc
+        }
+        else if((value) ~= "snowflake-jdbc")
+        {
+            artifactId: value,
+            'version': snowflake
+        }
+        else if((value) ~= "mule4-snowflake-connector")
+        {
+            artifactId: value,
+            'version': snf
+        }
+
+        else {(key): value} - 'version') 
+    })
+} ]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<file:write doc:name="Rewrite the pom file with latest version" doc:id="4fe22659-f66c-4840-8b2c-95e474543fd8" config-ref="File_Config" path="#[vars.path]" />
+		
+</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="decdc487-2dff-43f8-b52a-2408b5f45807" message='#["Connector versions updated successfully"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="38545f01-e12f-4228-aa28-9c562a499c68" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Connector versions are successfully updated in all projects"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
