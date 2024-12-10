@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connector Version Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #005f73;
+        }
+        h2 {
+            text-align: center;
+            color: #0284c7;
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0369a1;
+        }
+        select {
+            display: block;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: 1.1em;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #0284c7;
+            color: #fff;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #e0f7fa;
+            cursor: pointer;
+        }
+        #loadingIndicator {
+            display: none; /* Initially hidden */
+            position: fixed; /* Positioned relative to the viewport */
+            top: 50%; /* Center vertically */
+            left: 50%; /* Center horizontally */
+            transform: translate(-50%, -50%); /* Adjust to center the box perfectly */
+            padding: 20px 40px; /* Box padding */
+            background-color: rgba(0, 95, 115, 0.9); /* Semi-transparent background */
+            color: #fff; /* Text color */
+            font-size: 1.5em; /* Font size */
+            font-weight: bold; /* Bold text */
+            text-align: center; /* Center the text inside the box */
+            border-radius: 10px; /* Rounded corners */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+            z-index: 1000; /* Ensure it appears above other elements */
+        }
+    </style>
+</head>
+<body>
+    <h1>Connector Versions Report</h1>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator">Loading data, please wait...</div>
+
+    <!-- Dropdown to select application -->
+    <select id="applicationSelect" onchange="loadConnectors()">
+        <option value="">Select Application</option>
+    </select>
+
+    <!-- Container for tables -->
+    <div id="connectorsTableContainer"></div>
+
+    <button onclick="updateAllConnectors()">Update Connectors In All Projects</button>
+
+    <script>
+        let data = [];
+
+        // Show loading indicator with a custom message
+        function showLoadingIndicator(message = 'Loading data, please wait...') {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.textContent = message;
+            loadingIndicator.style.display = 'block';
+        }
+
+        // Hide loading indicator
+        function hideLoadingIndicator() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // Fetch data from the API and populate the dropdown when the page loads
+        window.onload = async () => {
+            showLoadingIndicator('Fetching data, please wait...');
+            await fetchData();
+            reloadPreviousState();
+            hideLoadingIndicator();
+        };
+
+        // Fetch data from the API
+        async function fetchData() {
+            try {
+                const response = await fetch('http://localhost:8082/getProjectDetails');
+                if (!response.ok) throw new Error('Failed to fetch data');
+
+                data = await response.json();
+                populateApplicationSelect(); // Populate the dropdown with application names
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('Unable to fetch project data. Please try again later.');
+            }
+        }
+
+        // Populate the dropdown with application names
+        function populateApplicationSelect() {
+            const select = document.getElementById('applicationSelect');
+            data.forEach(app => {
+                const option = document.createElement('option');
+                option.value = app.applicationName;
+                option.textContent = app.applicationName;
+                select.appendChild(option);
+            });
+        }
+
+        // Load connectors for the selected application
+        function loadConnectors() {
+            const selectedAppName = document.getElementById('applicationSelect').value;
+
+            // Save selected application to localStorage
+            localStorage.setItem('selectedAppName', selectedAppName);
+
+            const tableContainer = document.getElementById('connectorsTableContainer');
+
+            if (!selectedAppName) {
+                tableContainer.innerHTML = '';
+                return;
+            }
+
+            const selectedApp = data.find(app => app.applicationName === selectedAppName);
+            if (!selectedApp) {
+                tableContainer.innerHTML = '<p>No data found for this application.</p>';
+                return;
+            }
+
+            // Generate tables for connectors
+            const supportedConnectors = selectedApp.connectors.filter(
+                connector => connector.latestVersionInExchange !== "Unsupported"
+            );
+            const unsupportedConnectors = selectedApp.connectors.filter(
+                connector => connector.latestVersionInExchange === "Unsupported"
+            );
+
+            let htmlContent = '';
+
+            let supportedTableHtml = `
+                <h2>Supported Connectors</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Connector Name</th>
+                            <th>Connector Group</th>
+                            <th>Current Version in API</th>
+                            <th>Latest Version in Exchange</th>
+                            <th>Java 17 Support</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            supportedConnectors.forEach(connector => {
+                supportedTableHtml += `
+                    <tr>
+                        <td>${connector.connectorName}</td>
+                        <td>${connector.connectorGroupName}</td>
+                        <td>${connector.currentVersionInApi}</td>
+                        <td>${connector.latestVersionInExchange}</td>
+                        <td>${connector["Java 17"]}</td>
+                        <td>
+                            ${
+                                connector.currentVersionInApi !== connector.latestVersionInExchange
+                                    ? `<button onclick="updateVersion('${connector.connectorName}', '${selectedAppName}')">Update</button>`
+                                    : `Up to date`
+                            }
+                        </td>
+                    </tr>`;
+            });
+            supportedTableHtml += `</tbody></table>`;
+
+			// Unsupported Connectors Table
+            if (unsupportedConnectors.length > 0) {
+                let unsupportedTableHtml = `
+                    <h2>Unsupported Connectors</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Connector Name</th>
+                                <th>Connector Group</th>
+                                <th>Current Version in API</th>
+                                <th>Connector Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                unsupportedConnectors.forEach(connector => {
+                    unsupportedTableHtml += `
+                        <tr>
+                            <td>${connector.connectorName}</td>
+                            <td>${connector.connectorGroupName}</td>
+                            <td>${connector.currentVersionInApi}</td>
+                            <td>${connector.latestVersionInExchange}</td>
+                        </tr>`;
+                });
+                unsupportedTableHtml += `</tbody></table>`;
+                htmlContent = supportedTableHtml + unsupportedTableHtml;
+            } else {
+                htmlContent = supportedTableHtml;
+            }
+
+            // Add "Update All Connectors" button for the project
+            htmlContent += `
+                <button onclick="updateSingleProject('${selectedAppName}')">
+                    Update All Connectors for ${selectedAppName}
+                </button>`;
+
+            tableContainer.innerHTML = htmlContent;
+        }
+
+        // Reload the previous state after a page refresh
+        function reloadPreviousState() {
+            const selectedAppName = localStorage.getItem('selectedAppName');
+            if (selectedAppName) {
+                document.getElementById('applicationSelect').value = selectedAppName;
+                loadConnectors();
+            }
+        }
+
+        // Update a single connector
+        function updateVersion(connectorName, appName) {
+            showLoadingIndicator(`Processing...`);
+            const url = `http://localhost:8082/updateSingleConnector?projectName=${appName}&connectorName=${encodeURIComponent(connectorName)}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to update connector');
+                    return response.text();
+                })
+                .then(() => {
+                    hideLoadingIndicator();
+                    alert(`Connector '${connectorName}' updated successfully for project '${appName}'!`);
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    hideLoadingIndicator();
+                    alert(`Failed to update connector '${connectorName}'.`);
+                });
+        }
+
+        // Update all connectors for a single project
+        function updateSingleProject(appName) {
+            showLoadingIndicator(`Processing...`);
+            const url = `http://localhost:8082/updateSingleProject?projectName=${appName}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to update project');
+                    return response.text();
+                })
+                .then(() => {
+                    hideLoadingIndicator();
+                    alert(`All connectors updated successfully for project '${appName}'!`);
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    hideLoadingIndicator();
+                    alert(`Failed to update all connectors for project '${appName}'.`);
+                });
+        }
+
+        // Update all connectors across all projects
+        function updateAllConnectors() {
+            showLoadingIndicator('Processing...');
+            const url = `http://localhost:8082/updateAll`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to update all connectors');
+                    return response.text();
+                })
+                .then(() => {
+                    hideLoadingIndicator();
+                    alert('All connectors updated successfully!');
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    hideLoadingIndicator();
+                    alert('Failed to update all connectors.');
+                });
+        }
+    </script>
+</body>
+</html>
